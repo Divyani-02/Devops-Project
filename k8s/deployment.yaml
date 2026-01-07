@@ -17,6 +17,7 @@ spec:
       containers:
       - name: hello-devops
         image: divyania02/hello-devops:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 5000
         resources:
