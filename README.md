@@ -58,13 +58,75 @@ Devops-Project/
 │   ├── outputs.tf         # Output values
 │   └── terraform.tfvars.example  # Example variables
 ├── k8s/
-│   ├── deployment.yaml    # Kubernetes Deployment
-│   └── service.yaml       # Kubernetes Service (LoadBalancer)
+│   ├── deployment.yaml    # Kubernetes Deployment (AWS/Production)
+│   ├── service.yaml       # Kubernetes Service (LoadBalancer for AWS)
+│   └── minikube/
+│       ├── deployment.yaml # Minikube-specific deployment
+│       └── service.yaml    # NodePort service for local testing
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml     # CI/CD pipeline
 └── README.md
 ```
+
+## 🔧 Kubernetes Configurations
+
+This project includes **two sets** of Kubernetes manifests for different environments:
+
+### **Production/AWS EKS (`k8s/`)**
+
+Primary configuration for cloud deployment:
+
+- **`deployment.yaml`**
+  - Pulls image from Docker Hub
+  - Standard `imagePullPolicy` (IfNotPresent)
+  - Production-ready resource limits
+  
+- **`service.yaml`**
+  - Type: `LoadBalancer`
+  - Creates AWS Elastic Load Balancer
+  - Provides public IP for external access
+
+**Usage:**
+```bash
+kubectl apply -f k8s/
+```
+
+### **Local Development (`k8s/minikube/`)**
+
+Optimized configuration for local Minikube testing:
+
+- **`deployment.yaml`**
+  - Uses `imagePullPolicy: Never`
+  - Uses locally built Docker image
+  - Identical resource configuration
+  
+- **`service.yaml`**
+  - Type: `NodePort`
+  - Fixed port: 30080
+  - Works with Minikube port forwarding
+
+**Usage:**
+```bash
+# Build image in Minikube's Docker
+eval $(minikube docker-env)
+docker build -t divyania02/hello-devops:latest -f docker/Dockerfile .
+
+# Deploy
+kubectl apply -f k8s/minikube/
+
+# Access
+minikube service hello-devops-service
+```
+
+### **Key Differences:**
+
+| Feature | AWS/Production | Minikube/Local |
+|---------|---------------|----------------|
+| Image Source | Docker Hub | Local Docker |
+| Service Type | LoadBalancer | NodePort |
+| External Access | Public IP/DNS | localhost tunnel |
+| Use Case | Cloud deployment | Local testing |
 
 ## ✅ Prerequisites
 
@@ -173,6 +235,50 @@ kubectl get service hello-devops-service
 
 You should see: **"Hello DevOps Engineer!"**
 
+## ⚠️ AWS Deployment Cost Consideration
+
+This project includes production-ready Terraform code for AWS EKS deployment. 
+However, **AWS EKS incurs significant costs** (~$180/month for cluster + nodes).
+
+### Current Demonstration:
+- **Platform:** Minikube (local Kubernetes)
+- **Reason:** Cost-effective demonstration without cloud charges
+- **Functionality:** Identical to AWS EKS deployment
+- **Access:** `minikube service hello-devops-service`
+
+### AWS EKS Deployment (When Ready):
+
+All infrastructure code is prepared and tested. To deploy to AWS:
+
+```bash
+# 1. Configure AWS credentials
+aws configure
+
+# 2. Deploy infrastructure (⚠️ Costs ~$0.25/hour)
+cd terraform
+terraform init
+terraform apply
+
+# 3. Configure kubectl
+aws eks update-kubeconfig --region us-east-1 --name hello-devops-cluster
+
+# 4. Push to GitHub - Actions will automatically deploy
+git push origin main
+
+# 5. IMPORTANT: Destroy when done testing
+terraform destroy
+```
+
+**Estimated AWS Costs:**
+- EKS Control Plane: $0.10/hour ($72/month)
+- EC2 Nodes (2× t3.medium): $0.083/hour ($60/month)
+- Load Balancer: $0.025/hour ($18/month)
+- **Total: ~$0.20/hour or $150-180/month**
+
+### Design Decision:
+Used Minikube for local demonstration to avoid unnecessary AWS costs while 
+maintaining production-grade infrastructure code and DevOps best practices.
+
 ## 🔄 Deployment Process
 
 ### CI/CD Pipeline Flow
@@ -183,7 +289,7 @@ You should see: **"Hello DevOps Engineer!"**
    - Build Docker image from Dockerfile
    - Tag with commit SHA and `latest`
    - Push to Docker Hub
-3. **Deploy Stage:**
+3. **Deploy Stage (when AWS configured):**
    - Configure AWS credentials
    - Update kubectl config
    - Apply Kubernetes manifests
