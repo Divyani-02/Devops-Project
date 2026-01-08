@@ -96,8 +96,25 @@ kubectl get service hello-devops-service
 - **Terraform:** Infrastructure as Code for reproducible deployments
 - **GitHub Actions:** Free CI/CD for automated deployments
 - **LoadBalancer Service:** Makes application publicly accessible
+- **Minikube for Testing:** Used Minikube for local deployment testing to avoid AWS costs (~$180/month for EKS cluster). All infrastructure code is production-ready and can be deployed to AWS by adding credentials.
 
-**Live URL:** Get the EXTERNAL-IP from `kubectl get service hello-devops-service`
+**Testing with Minikube:**
+```bash
+# Start Minikube
+minikube start
+
+# Build image in Minikube's Docker
+eval $(minikube docker-env)
+docker build -t divyania02/hello-devops:latest -f docker/Dockerfile .
+
+# Deploy using Minikube configs
+kubectl apply -f k8s/minikube/
+
+# Access application
+minikube service hello-devops-service
+```
+
+**Live URL:** Get the EXTERNAL-IP from `kubectl get service hello-devops-service` (when deployed to AWS)
 
 ---
 
