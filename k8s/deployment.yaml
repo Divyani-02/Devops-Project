@@ -19,6 +19,18 @@ spec:
         image: divyania02/hello-devops:latest
         ports:
         - containerPort: 5000
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
         resources:
           requests:
             memory: "64Mi"
